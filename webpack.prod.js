@@ -3,7 +3,7 @@ const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
 const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
 
-module.exports = {
+module.exports = merge(common, {
 	mode: 'production',
 	devtool: false,
 	optimization: {
@@ -11,7 +11,7 @@ module.exports = {
 			new UglifyJsPlugin({
 				cache: true,
 				parallel: true,
-				sourceMap: true, // true for JS source maps
+				sourceMap: true,
 				uglifyOptions: {
                     output: {
                         comments: false
@@ -27,8 +27,7 @@ module.exports = {
             }
 		}),
 		new webpack.SourceMapDevToolPlugin({
-            publicPath: 'http://www.decoupling-4.test/dist/',
             filename: '[file].map'
         })
 	]
-};
+});
