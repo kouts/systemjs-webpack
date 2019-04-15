@@ -1,10 +1,8 @@
 # README #
 
-systemjs-webpack repository
+systemjs-webpack test repository
 
-### What is this repository for? ###
-
-This repository is a test for importing systemjs into a webpack build.
+### This repository is a test for importing systemjs into a webpack build. ###
 
 ## Usage
 ```sh
