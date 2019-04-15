@@ -19,4 +19,4 @@ or
 npm run build
 ```
 
-Check file ```src/js/bootstrap.js``` for details.
+Check file ```src/js/bootstrap.js``` and the demo folder for details.
