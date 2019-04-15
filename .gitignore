@@ -1,0 +1,12 @@
+# public/.htaccess
+# public/js/dist
+# app/init/config.php
+dist/css
+dist/fonts
+dist/img
+dist/js
+node_modules
+sftp-config.json
+.git-ftp.log
+composer.lock
+.vscode
