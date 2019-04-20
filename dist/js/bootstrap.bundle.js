@@ -81,61 +81,32 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 10);
+/******/ 	return __webpack_require__(__webpack_require__.s = "./js/bootstrap.js");
 /******/ })
 /************************************************************************/
-/******/ ([
-/* 0 */
-/***/ (function(module, exports) {
+/******/ ({
 
-// Provide a "System" global.
-module.exports = {
-	// Make sure import is only used as "System.import"
-	import: function() {
-		throw new Error("System.import cannot be used indirectly");
-	}
-};
-
-
-/***/ }),
-/* 1 */
-/***/ (function(module, exports) {
-
-var g;
-
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
-
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || new Function("return this")();
-} catch (e) {
-	// This works if the window reference is available
-	if (typeof window === "object") g = window;
-}
-
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
-
-module.exports = g;
-
-
-/***/ }),
-/* 2 */
+/***/ "../node_modules/es6-promise/auto.js":
+/*!*******************************************!*\
+  !*** ../node_modules/es6-promise/auto.js ***!
+  \*******************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 // This file can be required in Browserify and Node.js for automatic polyfill
 // To use it:  require('es6-promise/auto');
 
-module.exports = __webpack_require__(3).polyfill();
+module.exports = __webpack_require__(/*! ./ */ "../node_modules/es6-promise/dist/es6-promise.js").polyfill();
 
 
 /***/ }),
-/* 3 */
+
+/***/ "../node_modules/es6-promise/dist/es6-promise.js":
+/*!*******************************************************!*\
+  !*** ../node_modules/es6-promise/dist/es6-promise.js ***!
+  \*******************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(process, global) {/*!
@@ -1321,10 +1292,15 @@ return Promise$1;
 
 //# sourceMappingURL=es6-promise.map
 
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(4), __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../process/browser.js */ "../node_modules/process/browser.js"), __webpack_require__(/*! ./../../webpack/buildin/global.js */ "../node_modules/webpack/buildin/global.js")))
 
 /***/ }),
-/* 4 */
+
+/***/ "../node_modules/process/browser.js":
+/*!******************************************!*\
+  !*** ../node_modules/process/browser.js ***!
+  \******************************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -1514,11 +1490,317 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 5 */
+
+/***/ "../node_modules/systemjs/dist/extras/amd.js":
+/*!***************************************************!*\
+  !*** ../node_modules/systemjs/dist/extras/amd.js ***!
+  \***************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, System) {/*
-* SystemJS 3.1.2
+ * Support for AMD loading
+ */
+(function (global) {
+  const systemPrototype = System.constructor.prototype;
+
+  const emptyInstantiation = [[], function () { return {} }];
+
+  function unsupportedRequire () {
+    throw new Error('AMD require not supported.');
+  }
+
+  function emptyFn () {}
+
+  const requireExportsModule = ['require', 'exports', 'module'];
+
+  function createAMDRegister (amdDefineDeps, amdDefineExec) {
+    const exports = {};
+    const module = { exports: exports };
+    const depModules = [];
+    const setters = [];
+    let splice = 0;
+    for (let i = 0; i < amdDefineDeps.length; i++) {
+      const id = amdDefineDeps[i];
+      const index = setters.length;
+      if (id === 'require') {
+        depModules[i] = unsupportedRequire;
+        splice++;
+      }
+      else if (id === 'module') {
+        depModules[i] = module;
+        splice++;
+      }
+      else if (id === 'exports') {
+        depModules[i] = exports;
+        splice++;
+      }
+      else {
+        // needed for ie11 lack of iteration scope
+        const idx = i;
+        setters.push(function (ns) {
+          depModules[idx] = ns.default;
+        });
+      }
+      if (splice)
+        amdDefineDeps[index] = id;
+    }
+    if (splice)
+      amdDefineDeps.length -= splice;
+    const amdExec = amdDefineExec;
+    return [amdDefineDeps, function (_export) {
+      _export('default', exports);
+      return {
+        setters: setters,
+        execute: function () {
+          module.exports = amdExec.apply(exports, depModules) || module.exports;
+          if (exports !== module.exports)
+            _export('default', module.exports);
+        }
+      };
+    }];
+  }
+
+  // hook System.register to know the last declaration binding
+  let lastRegisterDeclare;
+  const systemRegister = systemPrototype.register;
+  // if we have named register support continue to use it
+  if (systemRegister.length === 3) {
+    systemPrototype.register = function (name, deps, declare) {
+      if (typeof name !== 'string')
+        lastRegisterDeclare = deps;
+      systemRegister.apply(this, arguments);
+    };
+  }
+  else {
+    systemPrototype.register = function (deps, declare) {
+      lastRegisterDeclare = declare;
+      systemRegister.apply(this, arguments);
+    };
+  }
+
+  const getRegister = systemPrototype.getRegister;
+  systemPrototype.getRegister = function () {
+    const register = getRegister.call(this);
+    // if its an actual System.register leave it
+    if (register && register[1] === lastRegisterDeclare)
+      return register;
+
+    // otherwise AMD takes priority
+    // no registration -> attempt AMD detection
+    if (!amdDefineDeps)
+      return register || emptyInstantiation;
+
+    const registration = createAMDRegister(amdDefineDeps, amdDefineExec);
+    amdDefineDeps = null;
+    return registration;
+  };
+  let amdDefineDeps, amdDefineExec;
+  global.define = function (name, deps, execute) {
+    // define('', [], function () {})
+    if (typeof name === 'string') {
+      if (amdDefineDeps) {
+        if (!System.registerRegistry)
+          throw new Error('Include the named register extension for SystemJS named AMD support.');
+        System.registerRegistry[name] = createAMDRegister(deps, execute);
+        amdDefineDeps = [];
+        amdDefineExec = emptyFn;
+        return;
+      }
+      else {
+        if (System.registerRegistry)
+          System.registerRegistry[name] = createAMDRegister([].concat(deps), execute);
+        name = deps;
+        deps = execute;
+      }
+    }
+    // define([], function () {})
+    if (name instanceof Array) {
+      amdDefineDeps = name;
+      amdDefineExec = deps;
+    }
+    // define({})
+    else if (typeof name === 'object') {
+      amdDefineDeps = [];
+      amdDefineExec = function () { return name };
+    }
+    // define(function () {})
+    else if (typeof name === 'function') {
+      amdDefineDeps = requireExportsModule;
+      amdDefineExec = name;
+    }
+  };
+  global.define.amd = {};
+})(typeof self !== 'undefined' ? self : global);
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../webpack/buildin/global.js */ "../node_modules/webpack/buildin/global.js"), __webpack_require__(/*! ./../../../webpack/buildin/system.js */ "../node_modules/webpack/buildin/system.js")))
+
+/***/ }),
+
+/***/ "../node_modules/systemjs/dist/extras/named-exports.js":
+/*!*************************************************************!*\
+  !*** ../node_modules/systemjs/dist/extras/named-exports.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(System) {/*
+ * Named exports support for legacy module formats in SystemJS 2.0
+ */
+(function () {
+  const systemPrototype = System.constructor.prototype;
+  
+  // hook System.register to know the last declaration binding
+  let lastRegisterDeclare;
+  const systemRegister = systemPrototype.register;
+  systemPrototype.register = function (deps, declare) {
+    lastRegisterDeclare = declare;
+    systemRegister.call(this, deps, declare);
+  };
+
+  const getRegister = systemPrototype.getRegister;
+  systemPrototype.getRegister = function () {
+    const register = getRegister.call(this);
+    // if it is an actual System.register call, then its ESM
+    // -> dont add named exports
+    if (!register || register[1] === lastRegisterDeclare || register[1].length === 0)
+      return register;
+    
+    // otherwise it was provided by a custom instantiator
+    // -> extend the registration with named exports support
+    const registerDeclare = register[1];
+    register[1] = function (_export, _context) {
+      // hook the _export function to note the default export
+      let defaultExport;
+      const declaration = registerDeclare.call(this, function (name, value) {
+        if (name === 'default')
+          defaultExport = value;
+        _export(name, value);
+      }, _context);
+      // hook the execute function
+      const execute = declaration.execute;
+      if (execute)
+        declaration.execute = function () {
+          execute.call(this);
+          // do a bulk export of the default export object
+          // to export all its names as named exports
+          if (typeof defaultExport === 'object')
+            _export(defaultExport);
+        };
+      return declaration;
+    };
+    return register;
+  };
+})();
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../webpack/buildin/system.js */ "../node_modules/webpack/buildin/system.js")))
+
+/***/ }),
+
+/***/ "../node_modules/systemjs/dist/extras/named-register.js":
+/*!**************************************************************!*\
+  !*** ../node_modules/systemjs/dist/extras/named-register.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(System) {/*
+ * SystemJS named register extension
+ * Supports System.register('name', [..deps..], function (_export, _context) { ... })
+ * 
+ * Names are written to the registry as-is
+ * System.register('x', ...) can be imported as System.import('x')
+ */
+(function () {
+  const systemJSPrototype = System.constructor.prototype;
+
+  const constructor = System.constructor;
+  const SystemJS = function () {
+    constructor.call(this);
+    this.registerRegistry = Object.create(null);
+  };
+  SystemJS.prototype = systemJSPrototype;
+  System = new SystemJS();
+
+  const register = systemJSPrototype.register;
+  systemJSPrototype.register = function (name, deps, declare) {
+    if (typeof name !== 'string')
+      return register.apply(this, arguments);
+
+    this.registerRegistry[name] = [deps, declare];
+
+    // Provide an empty module to signal success.
+    return register.call(this, [], function () { return {}; });
+  };
+
+  const resolve = systemJSPrototype.resolve;
+  systemJSPrototype.resolve = function (id, parentURL) {
+    if (id[0] === '/' || id[0] === '.' && (id[1] === '/' || id[1] === '.' && id[2] === '/'))
+      return resolve.call(this, id, parentURL);
+    if (id in this.registerRegistry)
+      return id;
+    return resolve.call(this, id, parentURL);
+  };
+
+  const instantiate = systemJSPrototype.instantiate;
+  systemJSPrototype.instantiate = function (url, firstParentUrl) {
+    return this.registerRegistry[url] || instantiate.call(this, url, firstParentUrl);
+  };
+})();
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../webpack/buildin/system.js */ "../node_modules/webpack/buildin/system.js")))
+
+/***/ }),
+
+/***/ "../node_modules/systemjs/dist/extras/transform.js":
+/*!*********************************************************!*\
+  !*** ../node_modules/systemjs/dist/extras/transform.js ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(System) {/*
+ * Support for a "transform" loader interface
+ */
+(function () {
+  const systemJSPrototype = System.constructor.prototype;
+
+  const instantiate = systemJSPrototype.instantiate;
+  systemJSPrototype.instantiate = function (url, parent) {
+    if (url.slice(-5) === '.wasm')
+      return instantiate.call(this, url, parent);
+
+    const loader = this;
+    return fetch(url, { credentials: 'same-origin' })
+    .then(function (res) {
+      if (!res.ok)
+        throw new Error('Fetch error: ' + res.status + ' ' + res.statusText + (parent ? ' loading from ' + parent : ''));
+      return res.text();
+    })
+    .then(function (source) {
+      return loader.transform.call(this, url, source);
+    })
+    .then(function (source) {
+      (0, eval)(source + '\n//# sourceURL=' + url);
+      return loader.getRegister();
+    });
+  };
+
+  // Hookable transform function!
+  systemJSPrototype.transform = function (_id, source) {
+    return source;
+  };
+})();
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../webpack/buildin/system.js */ "../node_modules/webpack/buildin/system.js")))
+
+/***/ }),
+
+/***/ "../node_modules/systemjs/dist/system.js":
+/*!***********************************************!*\
+  !*** ../node_modules/systemjs/dist/system.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global, System) {/*
+* SystemJS 3.1.5
 */
 (function () {
   const hasSelf = typeof self !== 'undefined';
@@ -2190,7 +2472,7 @@ process.umask = function() { return 0; };
   let acquiringImportMaps = typeof document !== 'undefined';
 
   if (acquiringImportMaps) {
-    document.querySelectorAll('script[type="systemjs-importmap"][src]').forEach(function (script) {
+    Array.prototype.forEach.call(document.querySelectorAll('script[type="systemjs-importmap"][src]'), function (script) {
       script._j = fetch(script.src).then(function (resp) {
         return resp.json();
       });
@@ -2212,7 +2494,7 @@ process.umask = function() { return 0; };
 
     if (acquiringImportMaps) {
       acquiringImportMaps = false;
-      document.querySelectorAll('script[type="systemjs-importmap"]').forEach(function (script) {
+      Array.prototype.forEach.call(document.querySelectorAll('script[type="systemjs-importmap"]'), function (script) {
         importMapPromise = importMapPromise.then(function (map) {
           return (script._j || script.src && fetch(script.src).then(function (resp) {return resp.json()}) || Promise.resolve(JSON.parse(script.innerHTML)))
           .then(function (json) {
@@ -2293,8 +2575,8 @@ process.umask = function() { return 0; };
   systemJSPrototype.entries = function () {
     const loader = this, keys = Object.keys(loader[REGISTRY]);
     let index = 0, ns, key;
-    return {
-      next () {
+    const result = {
+      next: function () {
         while (
           (key = keys[index++]) !== undefined && 
           (ns = loader.get(key)) === undefined
@@ -2303,326 +2585,106 @@ process.umask = function() { return 0; };
           done: key === undefined,
           value: key !== undefined && [key, ns]
         };
-      },
-      [iterator]: function() { return this }
+      }
     };
+
+    result[iterator] = function() { return this };
+
+    return result;
   };
 
 }());
 
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(1), __webpack_require__(0)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../webpack/buildin/global.js */ "../node_modules/webpack/buildin/global.js"), __webpack_require__(/*! ./../../webpack/buildin/system.js */ "../node_modules/webpack/buildin/system.js")))
 
 /***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(global, System) {/*
- * Support for AMD loading
- */
-(function (global) {
-  const systemPrototype = System.constructor.prototype;
+/***/ "../node_modules/unfetch/dist/unfetch.mjs":
+/*!************************************************!*\
+  !*** ../node_modules/unfetch/dist/unfetch.mjs ***!
+  \************************************************/
+/*! exports provided: default */
+/***/ (function(__webpack_module__, __webpack_exports__, __webpack_require__) {
 
-  const emptyInstantiation = [[], function () { return {} }];
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony default export */ __webpack_exports__["default"] = (function(e,n){return n=n||{},new Promise(function(t,r){var s=new XMLHttpRequest,o=[],u=[],i={},a=function(){return{ok:2==(s.status/100|0),statusText:s.statusText,status:s.status,url:s.responseURL,text:function(){return Promise.resolve(s.responseText)},json:function(){return Promise.resolve(JSON.parse(s.responseText))},blob:function(){return Promise.resolve(new Blob([s.response]))},clone:a,headers:{keys:function(){return o},entries:function(){return u},get:function(e){return i[e.toLowerCase()]},has:function(e){return e.toLowerCase()in i}}}};for(var l in s.open(n.method||"get",e,!0),s.onload=function(){s.getAllResponseHeaders().replace(/^(.*?):[^\S\n]*([\s\S]*?)$/gm,function(e,n,t){o.push(n=n.toLowerCase()),u.push([n,t]),i[n]=i[n]?i[n]+","+t:t}),t(a())},s.onerror=r,s.withCredentials="include"==n.credentials,n.headers)s.setRequestHeader(l,n.headers[l]);s.send(n.body||null)})});
+//# sourceMappingURL=unfetch.mjs.map
 
-  function unsupportedRequire () {
-    throw new Error('AMD require not supported.');
-  }
-
-  function emptyFn () {}
-
-  const requireExportsModule = ['require', 'exports', 'module'];
-
-  function createAMDRegister (amdDefineDeps, amdDefineExec) {
-    const exports = {};
-    const module = { exports: exports };
-    const depModules = [];
-    const setters = [];
-    let splice = 0;
-    for (let i = 0; i < amdDefineDeps.length; i++) {
-      const id = amdDefineDeps[i];
-      const index = setters.length;
-      if (id === 'require') {
-        depModules[i] = unsupportedRequire;
-        splice++;
-      }
-      else if (id === 'module') {
-        depModules[i] = module;
-        splice++;
-      }
-      else if (id === 'exports') {
-        depModules[i] = exports;
-        splice++;
-      }
-      else {
-        // needed for ie11 lack of iteration scope
-        const idx = i;
-        setters.push(function (ns) {
-          depModules[idx] = ns.default;
-        });
-      }
-      if (splice)
-        amdDefineDeps[index] = id;
-    }
-    if (splice)
-      amdDefineDeps.length -= splice;
-    const amdExec = amdDefineExec;
-    return [amdDefineDeps, function (_export) {
-      _export('default', exports);
-      return {
-        setters: setters,
-        execute: function () {
-          module.exports = amdExec.apply(exports, depModules) || module.exports;
-          if (exports !== module.exports)
-            _export('default', module.exports);
-        }
-      };
-    }];
-  }
-
-  // hook System.register to know the last declaration binding
-  let lastRegisterDeclare;
-  const systemRegister = systemPrototype.register;
-  // if we have named register support continue to use it
-  if (systemRegister.length === 3) {
-    systemPrototype.register = function (name, deps, declare) {
-      if (typeof name !== 'string')
-        lastRegisterDeclare = deps;
-      systemRegister.apply(this, arguments);
-    };
-  }
-  else {
-    systemPrototype.register = function (deps, declare) {
-      lastRegisterDeclare = declare;
-      systemRegister.apply(this, arguments);
-    };
-  }
-
-  const getRegister = systemPrototype.getRegister;
-  systemPrototype.getRegister = function () {
-    const register = getRegister.call(this);
-    // if its an actual System.register leave it
-    if (register && register[1] === lastRegisterDeclare)
-      return register;
-
-    // otherwise AMD takes priority
-    // no registration -> attempt AMD detection
-    if (!amdDefineDeps)
-      return register || emptyInstantiation;
-
-    const registration = createAMDRegister(amdDefineDeps, amdDefineExec);
-    amdDefineDeps = null;
-    return registration;
-  };
-  let amdDefineDeps, amdDefineExec;
-  global.define = function (name, deps, execute) {
-    // define('', [], function () {})
-    if (typeof name === 'string') {
-      if (amdDefineDeps) {
-        if (!System.registerRegistry)
-          throw new Error('Include the named register extension named AMD support in SystemJS.');
-        System.registerRegistry[name] = createAMDRegister(deps, execute);
-        amdDefineDeps = [];
-        amdDefineExec = emptyFn;
-        return;
-      }
-      else {
-        if (System.registerRegistry)
-          System.registerRegistry[name] = createAMDRegister(deps, execute);
-        name = deps;
-        deps = execute;
-      }
-    }
-    // define([], function () {})
-    if (name instanceof Array) {
-      amdDefineDeps = name;
-      amdDefineExec = deps;
-    }
-    // define({})
-    else if (typeof name === 'object') {
-      amdDefineDeps = [];
-      amdDefineExec = function () { return name };
-    }
-    // define(function () {})
-    else if (typeof name === 'function') {
-      amdDefineDeps = requireExportsModule;
-      amdDefineExec = name;
-    }
-  };
-  global.define.amd = {};
-})(typeof self !== 'undefined' ? self : global);
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(1), __webpack_require__(0)))
 
 /***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(System) {/*
- * Named exports support for legacy module formats in SystemJS 2.0
- */
-(function () {
-  const systemPrototype = System.constructor.prototype;
-  
-  // hook System.register to know the last declaration binding
-  let lastRegisterDeclare;
-  const systemRegister = systemPrototype.register;
-  systemPrototype.register = function (deps, declare) {
-    lastRegisterDeclare = declare;
-    systemRegister.call(this, deps, declare);
-  };
+/***/ "../node_modules/webpack/buildin/global.js":
+/*!*************************************************!*\
+  !*** ../node_modules/webpack/buildin/global.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
 
-  const getRegister = systemPrototype.getRegister;
-  systemPrototype.getRegister = function () {
-    const register = getRegister.call(this);
-    // if it is an actual System.register call, then its ESM
-    // -> dont add named exports
-    if (!register || register[1] === lastRegisterDeclare || register[1].length === 0)
-      return register;
-    
-    // otherwise it was provided by a custom instantiator
-    // -> extend the registration with named exports support
-    const registerDeclare = register[1];
-    register[1] = function (_export, _context) {
-      // hook the _export function to note the default export
-      let defaultExport;
-      const declaration = registerDeclare.call(this, function (name, value) {
-        if (name === 'default')
-          defaultExport = value;
-        _export(name, value);
-      }, _context);
-      // hook the execute function
-      const execute = declaration.execute;
-      if (execute)
-        declaration.execute = function () {
-          execute.call(this);
-          // do a bulk export of the default export object
-          // to export all its names as named exports
-          if (typeof defaultExport === 'object')
-            _export(defaultExport);
-        };
-      return declaration;
-    };
-    return register;
-  };
+var g;
+
+// This works in non-strict mode
+g = (function() {
+	return this;
 })();
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
+
+try {
+	// This works if eval is allowed (see CSP)
+	g = g || new Function("return this")();
+} catch (e) {
+	// This works if the window reference is available
+	if (typeof window === "object") g = window;
+}
+
+// g can still be undefined, but nothing to do about it...
+// We return undefined, instead of nothing here, so it's
+// easier to handle this case. if(!global) { ...}
+
+module.exports = g;
+
 
 /***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(System) {/*
- * SystemJS named register extension
- * Supports System.register('name', [..deps..], function (_export, _context) { ... })
- * 
- * Names are written to the registry as-is
- * System.register('x', ...) can be imported as System.import('x')
- */
-(function () {
-  const systemJSPrototype = System.constructor.prototype;
+/***/ "../node_modules/webpack/buildin/system.js":
+/*!*************************************************!*\
+  !*** ../node_modules/webpack/buildin/system.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
 
-  const constructor = System.constructor;
-  const SystemJS = function () {
-    constructor.call(this);
-    this.registerRegistry = Object.create(null);
-  };
-  SystemJS.prototype = systemJSPrototype;
-  System = new SystemJS();
+// Provide a "System" global.
+module.exports = {
+	// Make sure import is only used as "System.import"
+	import: function() {
+		throw new Error("System.import cannot be used indirectly");
+	}
+};
 
-  const register = systemJSPrototype.register;
-  systemJSPrototype.register = function (name, deps, declare) {
-    if (typeof name !== 'string')
-      return register.apply(this, arguments);
-
-    this.registerRegistry[name] = [deps, declare];
-
-    // Provide an empty module to signal success.
-    return register.call(this, [], function () { return {}; });
-  };
-
-  const resolve = systemJSPrototype.resolve;
-  systemJSPrototype.resolve = function (id, parentURL) {
-    if (id[0] === '/' || id[0] === '.' && (id[1] === '/' || id[1] === '.' && id[2] === '/'))
-      return resolve.call(this, id, parentURL);
-    if (id in this.registerRegistry)
-      return id;
-    return resolve.call(this, id, parentURL);
-  };
-
-  const instantiate = systemJSPrototype.instantiate;
-  systemJSPrototype.instantiate = function (url, firstParentUrl) {
-    return this.registerRegistry[url] || instantiate.call(this, url, firstParentUrl);
-  };
-})();
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
 
 /***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(System) {/*
- * Support for a "transform" loader interface
- */
-(function () {
-  const systemJSPrototype = System.constructor.prototype;
-
-  const instantiate = systemJSPrototype.instantiate;
-  systemJSPrototype.instantiate = function (url, parent) {
-    if (url.slice(-5) === '.wasm')
-      return instantiate.call(this, url, parent);
-
-    const loader = this;
-    return fetch(url, { credentials: 'same-origin' })
-    .then(function (res) {
-      if (!res.ok)
-        throw new Error('Fetch error: ' + res.status + ' ' + res.statusText + (parent ? ' loading from ' + parent : ''));
-      return res.text();
-    })
-    .then(function (source) {
-      return loader.transform.call(this, url, source);
-    })
-    .then(function (source) {
-      (0, eval)(source + '\n//# sourceURL=' + url);
-      return loader.getRegister();
-    });
-  };
-
-  // Hookable transform function!
-  systemJSPrototype.transform = function (_id, source) {
-    return source;
-  };
-})();
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
-
-/***/ }),
-/* 10 */
+/***/ "./js/bootstrap.js":
+/*!*************************!*\
+  !*** ./js/bootstrap.js ***!
+  \*************************/
+/*! no exports provided */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-
-// EXTERNAL MODULE: ../node_modules/es6-promise/auto.js
-var auto = __webpack_require__(2);
-
-// CONCATENATED MODULE: ../node_modules/unfetch/dist/unfetch.mjs
-/* harmony default export */ var unfetch = (function(e,n){return n=n||{},new Promise(function(t,r){var s=new XMLHttpRequest,o=[],u=[],i={},a=function(){return{ok:2==(s.status/100|0),statusText:s.statusText,status:s.status,url:s.responseURL,text:function(){return Promise.resolve(s.responseText)},json:function(){return Promise.resolve(JSON.parse(s.responseText))},blob:function(){return Promise.resolve(new Blob([s.response]))},clone:a,headers:{keys:function(){return o},entries:function(){return u},get:function(e){return i[e.toLowerCase()]},has:function(e){return e.toLowerCase()in i}}}};for(var l in s.open(n.method||"get",e,!0),s.onload=function(){s.getAllResponseHeaders().replace(/^(.*?):[^\S\n]*([\s\S]*?)$/gm,function(e,n,t){o.push(n=n.toLowerCase()),u.push([n,t]),i[n]=i[n]?i[n]+","+t:t}),t(a())},s.onerror=r,s.withCredentials="include"==n.credentials,n.headers)s.setRequestHeader(l,n.headers[l]);s.send(n.body||null)})});
-//# sourceMappingURL=unfetch.mjs.map
-
-// EXTERNAL MODULE: ../node_modules/systemjs/dist/system.js
-var system = __webpack_require__(5);
-
-// EXTERNAL MODULE: ../node_modules/systemjs/dist/extras/amd.js
-var amd = __webpack_require__(6);
-
-// EXTERNAL MODULE: ../node_modules/systemjs/dist/extras/named-exports.js
-var named_exports = __webpack_require__(7);
-
-// EXTERNAL MODULE: ../node_modules/systemjs/dist/extras/named-register.js
-var named_register = __webpack_require__(8);
-
-// EXTERNAL MODULE: ../node_modules/systemjs/dist/extras/transform.js
-var transform = __webpack_require__(9);
-
-// CONCATENATED MODULE: ./js/bootstrap.js
+/* harmony import */ var es6_promise_auto__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! es6-promise/auto */ "../node_modules/es6-promise/auto.js");
+/* harmony import */ var es6_promise_auto__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(es6_promise_auto__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var unfetch__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! unfetch */ "../node_modules/unfetch/dist/unfetch.mjs");
+/* harmony import */ var systemjs_dist_system_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! systemjs/dist/system.js */ "../node_modules/systemjs/dist/system.js");
+/* harmony import */ var systemjs_dist_system_js__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(systemjs_dist_system_js__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var systemjs_dist_extras_amd_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! systemjs/dist/extras/amd.js */ "../node_modules/systemjs/dist/extras/amd.js");
+/* harmony import */ var systemjs_dist_extras_amd_js__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(systemjs_dist_extras_amd_js__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */ var systemjs_dist_extras_named_exports_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! systemjs/dist/extras/named-exports.js */ "../node_modules/systemjs/dist/extras/named-exports.js");
+/* harmony import */ var systemjs_dist_extras_named_exports_js__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(systemjs_dist_extras_named_exports_js__WEBPACK_IMPORTED_MODULE_4__);
+/* harmony import */ var systemjs_dist_extras_named_register_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! systemjs/dist/extras/named-register.js */ "../node_modules/systemjs/dist/extras/named-register.js");
+/* harmony import */ var systemjs_dist_extras_named_register_js__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(systemjs_dist_extras_named_register_js__WEBPACK_IMPORTED_MODULE_5__);
+/* harmony import */ var systemjs_dist_extras_transform_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! systemjs/dist/extras/transform.js */ "../node_modules/systemjs/dist/extras/transform.js");
+/* harmony import */ var systemjs_dist_extras_transform_js__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(systemjs_dist_extras_transform_js__WEBPACK_IMPORTED_MODULE_6__);
 
  // This does not work
 
@@ -2651,5 +2713,6 @@ import 'script-loader!../../node_modules/systemjs/dist/extras/transform.js';
 })();
 
 /***/ })
-/******/ ]);
+
+/******/ });
 //# sourceMappingURL=bootstrap.bundle.js.map
