@@ -114,7 +114,7 @@ module.exports = __webpack_require__(/*! ./ */ "../node_modules/es6-promise/dist
  * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
  * @license   Licensed under MIT license
  *            See https://raw.githubusercontent.com/stefanpenner/es6-promise/master/LICENSE
- * @version   v4.2.6+9869a4bc
+ * @version   v4.2.8+1e68dce6
  */
 
 (function (global, factory) {
@@ -344,23 +344,12 @@ var PENDING = void 0;
 var FULFILLED = 1;
 var REJECTED = 2;
 
-var TRY_CATCH_ERROR = { error: null };
-
 function selfFulfillment() {
   return new TypeError("You cannot resolve a promise with itself");
 }
 
 function cannotReturnOwn() {
   return new TypeError('A promises callback cannot return that same promise.');
-}
-
-function getThen(promise) {
-  try {
-    return promise.then;
-  } catch (error) {
-    TRY_CATCH_ERROR.error = error;
-    return TRY_CATCH_ERROR;
-  }
 }
 
 function tryThen(then$$1, value, fulfillmentHandler, rejectionHandler) {
@@ -418,10 +407,7 @@ function handleMaybeThenable(promise, maybeThenable, then$$1) {
   if (maybeThenable.constructor === promise.constructor && then$$1 === then && maybeThenable.constructor.resolve === resolve$1) {
     handleOwnThenable(promise, maybeThenable);
   } else {
-    if (then$$1 === TRY_CATCH_ERROR) {
-      reject(promise, TRY_CATCH_ERROR.error);
-      TRY_CATCH_ERROR.error = null;
-    } else if (then$$1 === undefined) {
+    if (then$$1 === undefined) {
       fulfill(promise, maybeThenable);
     } else if (isFunction(then$$1)) {
       handleForeignThenable(promise, maybeThenable, then$$1);
@@ -435,7 +421,14 @@ function resolve(promise, value) {
   if (promise === value) {
     reject(promise, selfFulfillment());
   } else if (objectOrFunction(value)) {
-    handleMaybeThenable(promise, value, getThen(value));
+    var then$$1 = void 0;
+    try {
+      then$$1 = value.then;
+    } catch (error) {
+      reject(promise, error);
+      return;
+    }
+    handleMaybeThenable(promise, value, then$$1);
   } else {
     fulfill(promise, value);
   }
@@ -514,31 +507,18 @@ function publish(promise) {
   promise._subscribers.length = 0;
 }
 
-function tryCatch(callback, detail) {
-  try {
-    return callback(detail);
-  } catch (e) {
-    TRY_CATCH_ERROR.error = e;
-    return TRY_CATCH_ERROR;
-  }
-}
-
 function invokeCallback(settled, promise, callback, detail) {
   var hasCallback = isFunction(callback),
       value = void 0,
       error = void 0,
-      succeeded = void 0,
-      failed = void 0;
+      succeeded = true;
 
   if (hasCallback) {
-    value = tryCatch(callback, detail);
-
-    if (value === TRY_CATCH_ERROR) {
-      failed = true;
-      error = value.error;
-      value.error = null;
-    } else {
-      succeeded = true;
+    try {
+      value = callback(detail);
+    } catch (e) {
+      succeeded = false;
+      error = e;
     }
 
     if (promise === value) {
@@ -547,14 +527,13 @@ function invokeCallback(settled, promise, callback, detail) {
     }
   } else {
     value = detail;
-    succeeded = true;
   }
 
   if (promise._state !== PENDING) {
     // noop
   } else if (hasCallback && succeeded) {
     resolve(promise, value);
-  } else if (failed) {
+  } else if (succeeded === false) {
     reject(promise, error);
   } else if (settled === FULFILLED) {
     fulfill(promise, value);
@@ -632,7 +611,15 @@ var Enumerator = function () {
 
 
     if (resolve$$1 === resolve$1) {
-      var _then = getThen(entry);
+      var _then = void 0;
+      var error = void 0;
+      var didError = false;
+      try {
+        _then = entry.then;
+      } catch (e) {
+        didError = true;
+        error = e;
+      }
 
       if (_then === then && entry._state !== PENDING) {
         this._settledAt(entry._state, i, entry._result);
@@ -641,7 +628,11 @@ var Enumerator = function () {
         this._result[i] = entry;
       } else if (c === Promise$1) {
         var promise = new c(noop);
-        handleMaybeThenable(promise, entry, _then);
+        if (didError) {
+          reject(promise, error);
+        } else {
+          handleMaybeThenable(promise, entry, _then);
+        }
         this._willSettleAt(promise, i);
       } else {
         this._willSettleAt(new c(function (resolve$$1) {
@@ -1507,7 +1498,7 @@ process.umask = function() { return 0; };
   const emptyInstantiation = [[], function () { return {} }];
 
   function unsupportedRequire () {
-    throw new Error('AMD require not supported.');
+    throw Error('AMD require not supported.');
   }
 
   function emptyFn () {}
@@ -1539,7 +1530,7 @@ process.umask = function() { return 0; };
         // needed for ie11 lack of iteration scope
         const idx = i;
         setters.push(function (ns) {
-          depModules[idx] = ns.default;
+          depModules[idx] = ns.__useDefault ? ns.default : ns;
         });
       }
       if (splice)
@@ -1549,7 +1540,7 @@ process.umask = function() { return 0; };
       amdDefineDeps.length -= splice;
     const amdExec = amdDefineExec;
     return [amdDefineDeps, function (_export) {
-      _export('default', exports);
+      _export({ default: exports, __useDefault: true });
       return {
         setters: setters,
         execute: function () {
@@ -1601,7 +1592,7 @@ process.umask = function() { return 0; };
     if (typeof name === 'string') {
       if (amdDefineDeps) {
         if (!System.registerRegistry)
-          throw new Error('Include the named register extension for SystemJS named AMD support.');
+          throw Error('Include the named register extension for SystemJS named AMD support.');
         System.registerRegistry[name] = createAMDRegister(deps, execute);
         amdDefineDeps = [];
         amdDefineExec = emptyFn;
@@ -1674,6 +1665,8 @@ process.umask = function() { return 0; };
       const declaration = registerDeclare.call(this, function (name, value) {
         if (name === 'default')
           defaultExport = value;
+        if (name === '__useDefault')
+          return;
         _export(name, value);
       }, _context);
       // hook the execute function
@@ -1771,7 +1764,7 @@ process.umask = function() { return 0; };
     return fetch(url, { credentials: 'same-origin' })
     .then(function (res) {
       if (!res.ok)
-        throw new Error('Fetch error: ' + res.status + ' ' + res.statusText + (parent ? ' loading from ' + parent : ''));
+        throw Error('Fetch error: ' + res.status + ' ' + res.statusText + (parent ? ' loading from ' + parent : ''));
       return res.text();
     })
     .then(function (source) {
@@ -1800,7 +1793,7 @@ process.umask = function() { return 0; };
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, System) {/*
-* SystemJS 3.1.5
+* SystemJS 4.1.0
 */
 (function () {
   const hasSelf = typeof self !== 'undefined';
@@ -1808,7 +1801,14 @@ process.umask = function() { return 0; };
   const envGlobal = hasSelf ? self : global;
 
   let baseUrl;
-  if (typeof location !== 'undefined') {
+
+  if (typeof document !== 'undefined') {
+    const baseEl = document.querySelector('base[href]');
+    if (baseEl)
+      baseUrl = baseEl.href;
+  }
+
+  if (!baseUrl && typeof location !== 'undefined') {
     baseUrl = location.href.split('#')[0].split('?')[0];
     const lastSepIndex = baseUrl.lastIndexOf('/');
     if (lastSepIndex !== -1)
@@ -1830,7 +1830,7 @@ process.umask = function() { return 0; };
       const parentProtocol = parentUrl.slice(0, parentUrl.indexOf(':') + 1);
       // Disabled, but these cases will give inconsistent results for deep backtracking
       //if (parentUrl[parentProtocol.length] !== '/')
-      //  throw new Error('Cannot resolve');
+      //  throw Error('Cannot resolve');
       // read pathname from parent URL
       // pathname taken to be part after leading "/"
       let pathname;
@@ -1898,10 +1898,10 @@ process.umask = function() { return 0; };
 
   /*
    * Import maps implementation
-   * 
+   *
    * To make lookups fast we pre-resolve the entire import map
    * and then match based on backtracked hash lookups
-   * 
+   *
    */
 
   function resolveUrl (relUrl, parentUrl) {
@@ -1976,7 +1976,7 @@ process.umask = function() { return 0; };
   }
 
   function throwBare (id, parentUrl) {
-    throw new Error('Unable to resolve bare specifier "' + id + (parentUrl ? '" from ' + parentUrl : '"'));
+    throw Error('Unable to resolve bare specifier "' + id + (parentUrl ? '" from ' + parentUrl : '"'));
   }
 
   /*
@@ -2054,7 +2054,7 @@ process.umask = function() { return 0; };
     })
     .then(function (registration) {
       if (!registration)
-        throw new Error('Module ' + id + ' did not instantiate');
+        throw Error('Module ' + id + ' did not instantiate');
       function _export (name, value) {
         // note if we have hoisted exports (including reexports)
         load.h = true;
@@ -2125,7 +2125,7 @@ process.umask = function() { return 0; };
       load.er = err;
     });
 
-    // Captial letter = a promise function
+    // Capital letter = a promise function
     return load = loader[REGISTRY][id] = {
       id: id,
       // importerSetters, the setters functions registered to this dependency
@@ -2265,42 +2265,56 @@ process.umask = function() { return 0; };
    * Supports loading System.register via script tag injection
    */
 
-  let err;
-  if (typeof window !== 'undefined')
-    window.addEventListener('error', function (e) {
-      err = e.error;
-    });
-
   const systemRegister = systemJSPrototype.register;
   systemJSPrototype.register = function (deps, declare) {
-    err = undefined;
     systemRegister.call(this, deps, declare);
   };
 
   systemJSPrototype.instantiate = function (url, firstParentUrl) {
     const loader = this;
-    return new Promise(function (resolve, reject) {
-      const script = document.createElement('script');
-      script.charset = 'utf-8';
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      script.addEventListener('error', function () {
-        reject(new Error('Error loading ' + url + (firstParentUrl ? ' from ' + firstParentUrl : '')));
+    if (url.substr(-5) === '.json') {
+      return fetch(url).then(function (resp) {
+        return resp.text();
+      }).then(function (source) {
+        return [[], function(_export) {
+          return {execute: function() {_export('default', JSON.parse(source));}};
+        }];
       });
-      script.addEventListener('load', function () {
-        document.head.removeChild(script);
-        // Note URL normalization issues are going to be a careful concern here
-        if (err) {
-          reject(err);
-          return err = undefined;
+    } else {
+      return new Promise(function (resolve, reject) {
+        let err;
+
+        function windowErrorListener(evt) {
+          if (evt.filename === url)
+            err = evt.error;
         }
-        else {
-          resolve(loader.getRegister());
-        }
+
+        window.addEventListener('error', windowErrorListener);
+
+        const script = document.createElement('script');
+        script.charset = 'utf-8';
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        script.addEventListener('error', function () {
+          window.removeEventListener('error', windowErrorListener);
+          reject(Error('Error loading ' + url + (firstParentUrl ? ' from ' + firstParentUrl : '')));
+        });
+        script.addEventListener('load', function () {
+          window.removeEventListener('error', windowErrorListener);
+          document.head.removeChild(script);
+          // Note that if an error occurs that isn't caught by this if statement,
+          // that getRegister will return null and a "did not instantiate" error will be thrown.
+          if (err) {
+            reject(err);
+          }
+          else {
+            resolve(loader.getRegister());
+          }
+        });
+        script.src = url;
+        document.head.appendChild(script);
       });
-      script.src = url;
-      document.head.appendChild(script);
-    });
+    }
   };
 
   /*
@@ -2394,7 +2408,11 @@ process.umask = function() { return 0; };
     }
 
     return [[], function (_export) {
-      return { execute: function () { _export('default', globalExport); } };
+      return {
+        execute: function () {
+          _export({ default: globalExport, __useDefault: true });
+        }
+      };
     }];
   };
 
@@ -2412,7 +2430,7 @@ process.umask = function() { return 0; };
     return fetch(url)
     .then(function (res) {
       if (!res.ok)
-        throw new Error(res.status + ' ' + res.statusText + ' ' + res.url + (parent ? ' loading from ' + parent : ''));
+        throw Error(res.status + ' ' + res.statusText + ' ' + res.url + (parent ? ' loading from ' + parent : ''));
 
       if (WebAssembly.compileStreaming)
         return WebAssembly.compileStreaming(res);
